@@ -1,0 +1,11 @@
+streamlit
+pandas
+openai
+matplotlib
+openpyxl
+torch
+transformers
+accelerate
+bitsandbytes
+peft
+sentencepiece
