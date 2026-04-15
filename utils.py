@@ -4,6 +4,7 @@ import io
 import matplotlib.pyplot as plt
 import pandas as pd
 from mlx_lm import generate, load
+from mlx_lm.sample_utils import make_sampler
 
 model = None
 tokenizer = None
@@ -17,25 +18,28 @@ def init_model(model_path="mlx-community/gemma-2-2b-it-4bit"):
     print(f"Модель {model_path} загружена через MLX")
 
 
-def generate_local_response(prompt, max_tokens=1024, temp=0.5):
+def generate_local_response(prompt, max_tokens=1024, temperature=0.5):
     global model, tokenizer
     if not model_loaded:
         raise RuntimeError("Модель не загружена. Вызовите init_model().")
 
-    messages = [{"role": "user", "content": prompt}]
     if hasattr(tokenizer, "apply_chat_template"):
+        messages = [{"role": "user", "content": prompt}]
         input_text = tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
     else:
-        input_text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+        input_text = prompt
+
+    sampler = make_sampler(temp=temperature)
 
     response = generate(
         model,
         tokenizer,
         prompt=input_text,
         max_tokens=max_tokens,
-        temp=temp,
+        sampler=sampler,
+        verbose=False,
     )
     return response.strip()
 
@@ -105,7 +109,9 @@ def generate_summary(df):
     Если каких то данных не хватает (например нет информации о дубликатах) скажи «требуется дополнительная проверка».
     """
     try:
-        return generate_local_response(prompt, max_tokens=1500, temp=0.5)
+        return generate_local_response(
+            prompt, max_tokens=1500, temperature=0.5
+        )
     except Exception as e:
         return f"Ошибка при генерации аналитики: {e}"
 
@@ -161,7 +167,7 @@ def generate_plot(df, chart_type, col_x, col_y):
         """
     try:
         code_response = generate_local_response(
-            prompt, max_tokens=800, temp=0.2
+            prompt, max_tokens=800, temperature=0.2
         )
         code = code_response
         if "```python" in code:
