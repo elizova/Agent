@@ -1,0 +1,8 @@
+[server]
+fileWatcherType = "none"
+
+[runner]
+fastReruns = false
+
+[browser]
+gatherUsageStats = false

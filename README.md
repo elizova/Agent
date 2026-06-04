@@ -1,90 +1,97 @@
-# AI‑аналитик данных (OpenRouter + Streamlit)
+# AI-агент для поиска работы и адаптации резюме
 
-Веб‑приложение для автоматического анализа табличных данных (CSV / Excel) с использованием LLM (через OpenRouter). Позволяет загружать несколько файлов, получать текстовую аналитику и строить графики на основе выбранных пользователем колонок и типа визуализации.
+Курсовой проект: **использование больших языковых моделей для создания ИИ-агентов** (+ дообучение LoRA для адаптации резюме).
 
-## Задача (в рамках учебного проекта)
+## Архитектура
 
-Реализовать мини‑продукт с LLM‑аналитикой:
-- Загрузка файлов (CSV, Excel) через веб‑интерфейс.
-- Автоматическое формирование аналитического отчёта с помощью LLM.
-- Построение графиков с выбором колонок и типа графика.
-- Сохранение истории аналитики для нескольких файлов.
-- Доступность приложения онлайн без локальной установки.
+| Компонент | Назначение |
+|-----------|------------|
+| **Streamlit** (`app.py`, `pages/`) | Интерфейс |
+| **FastAPI** (`api/`) | REST API, авторизация, данные в Postgres |
+| **PostgreSQL** (Docker) | Резюме, история — **отдельно у каждого пользователя** |
+| **MLX / API** | LLM: локально или OpenAI-совместимый endpoint |
+| **LoRA** (`training/`) | Дообучение только на задачу адаптации резюме |
 
-## Доступ в интернете
+### Две авторизации
 
-Приложение развёрнуто на **Streamlit Community Cloud** и доступно по адресу:  
-[https://dataanalyticsthree.streamlit.app/](https://dataanalyticsthree.streamlit.app/)
+1. **Email + пароль** — вход в приложение, ваши резюме и история.
+2. **HeadHunter OAuth** — опционально, для API hh.ru (кнопка «Подключить HH» в сайдбаре после входа по email).
 
-## Локальный запуск (для разработки или тестирования)
+## Быстрый старт
 
-### 1. Клонируйте репозиторий
+### 1. Docker: база и API
 
 ```bash
-git clone https://github.com/elizova/DataAnalyticsThree.git
+cp .env.example .env
+# Заполните HH_CLIENT_ID, HH_CLIENT_SECRET, JWT_SECRET
+
+docker compose up -d
 ```
 
-### 2. Создайте виртуальное окружение
+API: http://localhost:8000/docs  
+Postgres: `localhost:5432`, user/pass/db: `career` / `career` / `career_agent`
+
+### 2. Streamlit (на хосте)
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate      # Linux / macOS
-.venv\Scripts\activate          # Windows
-```
-
-### 3. Установите зависимости
-
-```bash
+source .venv/bin/activate
 pip install -r requirements.txt
-```
+pip install -r requirements-api.txt   # если запускаете API локально без Docker
 
-### 4. Настройте API‑ключ OpenRouter
+# Локальная модель (Mac Apple Silicon):
+pip install -r requirements-ml.txt
 
-Замените `.streamlit.example/secrets.toml.example` на `.streamlit/secrets.toml` (в корне проекта) и добавьте в него:
-
-```toml
-OPENROUTER_API_KEY = "sk-or-v1-ваш_ключ_с_openrouter"
-```
-
-Ключ можно получить на [openrouter.ai/keys](https://openrouter.ai/keys). Бесплатная модель `openrouter/free` не требует оплаты.
-
-### 5. Запустите приложение
-
-```bash
 streamlit run app.py
 ```
 
-После этого откроется локальный адрес `http://localhost:8501`.
+Откройте http://localhost:8501 → раздел **Вход** → регистрация → остальные страницы.
 
-## 📂 Структура проекта
+### 3. LLM: локально или облако
+
+В `.env`:
+
+```env
+# Локально (Mac + MLX):
+LLM_PROVIDER=local
+LLM_LOCAL_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit
+
+# Облако (без MLX):
+LLM_PROVIDER=api
+LLM_API_BASE=https://openrouter.ai/api/v1
+LLM_API_KEY=ваш_ключ
+LLM_API_MODEL=google/gemma-2-9b-it
+```
+
+### 4. Дообучение резюме
+
+Подробно: **[training/README.md](training/README.md)**
+
+Кратко:
+
+1. Положите пары резюме в `training/data/resume_adaptation.jsonl`
+2. `python training/build_mlx_dataset.py`
+3. `python training/train_resume_lora.py`
+4. В `.env`: `RESUME_ADAPTER_PATH=training/output/resume-lora`
+
+## Структура
 
 ```
-.
-├── app.py                 # Главный файл с интерфейсом Streamlit
-├── utils.py               # Вспомогательные функции (LLM, графики, кодировки)
-├── requirements.txt       # Зависимости Python
-├── README.md              # Этот файл
-└── .streamlit/
-    └── secrets.toml       # Секретный ключ (не загружается в git)
-```    
+docker-compose.yml      # Postgres + API
+api/                    # FastAPI
+pages/                  # Streamlit
+  0_Вход.py             # email / пароль
+utils/
+  api_client.py         # клиент к API
+  llm_provider.py       # local | api | adapter
+  agent.py
+training/               # LoRA для adapt_resume
+```
 
+## Почему Streamlit не в Docker
 
-## Пример входных данных
+MLX и GPU Apple Silicon удобнее на хосте. В Docker — только **Postgres + API**. Модель и Streamlit запускаются локально; при деплое в облако — `LLM_PROVIDER=api`.
 
-Подойдёт любой CSV или Excel‑файл с табличными данными.  
+## Миграция со старого SQLite
 
-## Выходные данные (результат работы AI)
-
-Приложение выдаёт два основных блока:
-
-1. **Текстовый аналитический отчёт** (на русском языке), который включает:
-   - Общую характеристику данных.
-   - Качество данных (пропуски, типы, выбросы).
-   - Ключевые метрики и распределения.
-   - Взаимосвязи и потенциальные инсайты.
-   - Рекомендации по дальнейшему анализу и визуализациям.
-
-2. **График** (на выбор пользователя):
-   - Типы: scatter plot, line plot, bar chart, histogram.
-   - Пользователь сам выбирает колонки для осей (или одну колонку для гистограммы).
-   - График строится на основе всего загруженного датасета с помощью кода, сгенерированного LLM.
+Старый `data/app.db` больше не используется. Данные нужно заново сохранить после регистрации (или написать одноразовый скрипт импорта).

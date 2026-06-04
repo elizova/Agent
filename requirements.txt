@@ -1,11 +1,6 @@
 streamlit
 pandas
-openai
-matplotlib
-openpyxl
-torch
-transformers
-accelerate
-bitsandbytes
-peft
+requests
+httpx
+python-dotenv
 sentencepiece

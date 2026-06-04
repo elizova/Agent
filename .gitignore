@@ -60,6 +60,10 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+data/app.db
+training/data/resume_adaptation.jsonl
+training/data/mlx/
+training/output/
 
 # Flask stuff:
 instance/
@@ -157,7 +161,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.streamlit/
 
 # Spyder project settings
 .spyderproject
