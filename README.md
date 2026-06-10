@@ -60,7 +60,7 @@ LLM_LOCAL_MODEL=mlx-community/Qwen2.5-3B-Instruct-4bit
 LLM_PROVIDER=api
 LLM_API_BASE=https://openrouter.ai/api/v1
 LLM_API_KEY=ваш_ключ
-LLM_API_MODEL=google/gemma-2-9b-it
+LLM_API_MODEL=google/Qwen2.5-3B-Instruct-4bit
 ```
 
 ### 4. Дообучение резюме
@@ -74,24 +74,3 @@ LLM_API_MODEL=google/gemma-2-9b-it
 3. `python training/train_resume_lora.py`
 4. В `.env`: `RESUME_ADAPTER_PATH=training/output/resume-lora`
 
-## Структура
-
-```
-docker-compose.yml      # Postgres + API
-api/                    # FastAPI
-pages/                  # Streamlit
-  0_Вход.py             # email / пароль
-utils/
-  api_client.py         # клиент к API
-  llm_provider.py       # local | api | adapter
-  agent.py
-training/               # LoRA для adapt_resume
-```
-
-## Почему Streamlit не в Docker
-
-MLX и GPU Apple Silicon удобнее на хосте. В Docker — только **Postgres + API**. Модель и Streamlit запускаются локально; при деплое в облако — `LLM_PROVIDER=api`.
-
-## Миграция со старого SQLite
-
-Старый `data/app.db` больше не используется. Данные нужно заново сохранить после регистрации (или написать одноразовый скрипт импорта).
